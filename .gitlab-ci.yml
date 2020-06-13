@@ -1,0 +1,42 @@
+---
+.default_runner:
+  tags:
+    - kubernetes
+
+.kubernetes_dind:
+  extends: .default_runner
+  image: docker
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://localhost:2375
+
+stages:
+  - build
+  - package
+  - deploy
+
+
+variables:
+  CI_REGISTRY_URL: "$CI_REGISTRY/$CI_PROJECT_PATH"
+  BUILDX_VERSION: "v0.4.1"
+
+Buildx:
+  extends: .kubernetes_dind
+  stage: build
+  before_script:
+    - apk add curl
+    - mkdir -vp ~/.docker/cli-plugins/ ~/dockercache
+    - curl --silent -L "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64" > ~/.docker/cli-plugins/docker-buildx
+    - chmod a+x ~/.docker/cli-plugins/docker-buildx
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - echo -n "${CI_REGISTRY_PASSWORD}" | docker login -u "${CI_REGISTRY_USER}" --password-stdin
+  script:
+    - docker buildx create --use
+    - docker buildx inspect --bootstrap
+    - docker buildx build --push --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 -t ${CI_REGISTRY_URL}:${CI_COMMIT_SHORT_SHA} .
+  only:
+    refs:
+      - master
