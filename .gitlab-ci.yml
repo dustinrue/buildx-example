@@ -15,12 +15,10 @@
 
 stages:
   - build
-  - package
-  - deploy
 
 
 variables:
-  CI_REGISTRY_URL: "$CI_REGISTRY/$CI_PROJECT_PATH"
+  CI_REGISTRY_URL: "$CI_REGISTRY/$CI_PROJECT_PATH" # set this to your hub.docker.com URL if using docker hub
   BUILDX_VERSION: "v0.4.1"
 
 Buildx:
@@ -32,6 +30,8 @@ Buildx:
     - curl --silent -L "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64" > ~/.docker/cli-plugins/docker-buildx
     - chmod a+x ~/.docker/cli-plugins/docker-buildx
     - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - # If you are using hub.docker.com create variables 
+    - # echo -n "${CI_REGISTRY_PASSWORD}" | docker login -u "${CI_REGISTRY_USER}" --password-stdin
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
   script:
     - docker buildx create --use
